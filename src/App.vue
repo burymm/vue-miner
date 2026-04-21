@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { computed, ref } from 'vue'
 
 const BOARD_SIZE = 10
@@ -6,11 +6,25 @@ const MINES_COUNT = 15
 const RECORDS_LIMIT = 10
 const RECORDS_STORAGE_KEY = 'vue-miner-records'
 
+type Cell = {
+  row: number
+  col: number
+  hasMine: boolean
+  isOpen: boolean
+  isFlagged: boolean
+  adjacentMines: number
+}
+
+type RecordEntry = {
+  seconds: number
+  playedAt: string
+}
+
 const gameOver = ref(false)
 const isWin = ref(false)
-const board = ref([])
-const startedAt = ref(null)
-const endedAt = ref(null)
+const board = ref<Cell[][]>([])
+const startedAt = ref<number | null>(null)
+const endedAt = ref<number | null>(null)
 const records = ref(loadRecords())
 
 const directions = [
@@ -50,7 +64,7 @@ const statusText = computed(() => {
   return 'ЛКМ: открыть, ПКМ: поставить флаг'
 })
 
-function loadRecords() {
+function loadRecords(): RecordEntry[] {
   const raw = localStorage.getItem(RECORDS_STORAGE_KEY)
   if (!raw) {
     return []
@@ -66,17 +80,21 @@ function loadRecords() {
       .filter((record) => {
         return typeof record.seconds === 'number' && typeof record.playedAt === 'string'
       })
+      .map((record) => ({
+        seconds: record.seconds,
+        playedAt: record.playedAt,
+      }))
       .slice(0, RECORDS_LIMIT)
   } catch {
     return []
   }
 }
 
-function persistRecords() {
+function persistRecords(): void {
   localStorage.setItem(RECORDS_STORAGE_KEY, JSON.stringify(records.value))
 }
 
-function saveRecord(seconds) {
+function saveRecord(seconds: number): void {
   const nextRecords = [
     ...records.value,
     {
@@ -91,12 +109,12 @@ function saveRecord(seconds) {
   persistRecords()
 }
 
-function clearRecords() {
+function clearRecords(): void {
   records.value = []
   localStorage.removeItem(RECORDS_STORAGE_KEY)
 }
 
-function formatPlayedAt(dateISO) {
+function formatPlayedAt(dateISO: string): string {
   return new Date(dateISO).toLocaleString('ru-RU', {
     day: '2-digit',
     month: '2-digit',
@@ -105,11 +123,11 @@ function formatPlayedAt(dateISO) {
   })
 }
 
-function inBounds(row, col) {
+function inBounds(row: number, col: number): boolean {
   return row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE
 }
 
-function createCell(row, col) {
+function createCell(row: number, col: number): Cell {
   return {
     row,
     col,
@@ -120,7 +138,7 @@ function createCell(row, col) {
   }
 }
 
-function resetGame() {
+function resetGame(): void {
   const nextBoard = Array.from({ length: BOARD_SIZE }, (_, row) =>
     Array.from({ length: BOARD_SIZE }, (_, col) => createCell(row, col)),
   )
@@ -163,7 +181,7 @@ function resetGame() {
   endedAt.value = null
 }
 
-function revealAllMines() {
+function revealAllMines(): void {
   for (const row of board.value) {
     for (const cell of row) {
       if (cell.hasMine) {
@@ -173,11 +191,15 @@ function revealAllMines() {
   }
 }
 
-function openZeroArea(startRow, startCol) {
-  const queue = [[startRow, startCol]]
+function openZeroArea(startRow: number, startCol: number): void {
+  const queue: Array<[number, number]> = [[startRow, startCol]]
 
   while (queue.length > 0) {
-    const [row, col] = queue.shift()
+    const next = queue.shift()
+    if (!next) {
+      continue
+    }
+    const [row, col] = next
     const cell = board.value[row][col]
 
     if (cell.isOpen || cell.isFlagged) {
@@ -203,7 +225,7 @@ function openZeroArea(startRow, startCol) {
   }
 }
 
-function checkWinCondition() {
+function checkWinCondition(): boolean {
   for (const row of board.value) {
     for (const cell of row) {
       if (!cell.hasMine && !cell.isOpen) {
@@ -218,7 +240,7 @@ function checkWinCondition() {
   return true
 }
 
-function handleCellClick(row, col) {
+function handleCellClick(row: number, col: number): void {
   if (gameOver.value || isWin.value) {
     return
   }
@@ -245,7 +267,7 @@ function handleCellClick(row, col) {
   checkWinCondition()
 }
 
-function handleCellRightClick(event, row, col) {
+function handleCellRightClick(event: MouseEvent, row: number, col: number): void {
   event.preventDefault()
 
   if (gameOver.value || isWin.value) {
