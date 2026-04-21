@@ -1,6 +1,69 @@
+:root {
+  /* Colors */
+  --color-bg: #f1f5f9;
+  --color-text: #0f172a;
+  --color-surface: #ffffff;
+  --color-border: #cbd5e1;
+  --color-muted: #475569;
+
+  /* Cell colors */
+  --cell-bg-closed: #e2e8f0;
+  --cell-bg-closed-hover: #cbd5e1;
+  --cell-bg-open: #f8fafc;
+  --cell-bg-mine: #fecaca;
+  --cell-bg-flag: #fef3c7;
+  --cell-border: #94a3b8;
+
+  /* Number colors */
+  --num-1: #3b82f6;
+  --num-2: #22c55e;
+  --num-3: #ef4444;
+  --num-4: #8b5cf6;
+  --num-5: #f59e0b;
+  --num-6: #06b6d4;
+  --num-7: #1e293b;
+  --num-8: #64748b;
+
+  /* Accent colors */
+  --accent-primary: #2563eb;
+  --accent-primary-hover: #1d4ed8;
+  --accent-secondary: #e2e8f0;
+  --accent-secondary-hover: #cbd5e1;
+
+  /* Dimensions */
+  --cell-size: 34px;
+  --cell-gap: 4px;
+  --border-radius-sm: 4px;
+  --border-radius-md: 6px;
+  --border-radius-lg: 8px;
+  --border-radius-xl: 10px;
+  --border-radius-2xl: 16px;
+
+  /* Focus */
+  --focus-ring-width: 2px;
+  --focus-ring-color: #2563eb;
+  --focus-ring-offset: 2px;
+
+  /* Transitions */
+  --transition-fast: 0.1s ease;
+  --transition-normal: 0.15s ease;
+  --transition-slow: 0.2s ease;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
 body {
   margin: 0;
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  background: #f1f5f9;
-  color: #0f172a;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* Global focus styles */
+*:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: var(--focus-ring-offset);
 }

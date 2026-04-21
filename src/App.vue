@@ -1,293 +1,108 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref, watch } from 'vue'
+import { useMinesweeper } from './composables/useMinesweeper'
+import { NUMBER_COLORS } from './config'
 
-const BOARD_SIZE = 10
-const MINES_COUNT = 15
-const RECORDS_LIMIT = 10
-const RECORDS_STORAGE_KEY = 'vue-miner-records'
+const {
+  gameOver,
+  isWin,
+  board,
+  elapsedSeconds,
+  minesLeft,
+  flagsCount,
+  records,
+  statusText,
+  handleCellClick,
+  handleCellRightClick,
+  resetGame,
+  clearRecords,
+  formatPlayedAt,
+  getCellAriaLabel,
+  getNumberColor,
+} = useMinesweeper()
 
-type Cell = {
-  row: number
-  col: number
-  hasMine: boolean
-  isOpen: boolean
-  isFlagged: boolean
-  adjacentMines: number
-}
+// Keyboard navigation
+const focusedCell = ref<{ row: number; col: number } | null>(null)
 
-type RecordEntry = {
-  seconds: number
-  playedAt: string
-}
+function handleKeydown(event: KeyboardEvent): void {
+  if (!board.value.length) return
 
-const gameOver = ref(false)
-const isWin = ref(false)
-const board = ref<Cell[][]>([])
-const startedAt = ref<number | null>(null)
-const endedAt = ref<number | null>(null)
-const records = ref(loadRecords())
+  const maxIndex = board.value.length - 1
 
-const directions = [
-  [-1, -1],
-  [-1, 0],
-  [-1, 1],
-  [0, -1],
-  [0, 1],
-  [1, -1],
-  [1, 0],
-  [1, 1],
-]
-
-const elapsedSeconds = computed(() => {
-  if (!startedAt.value) {
-    return 0
-  }
-  const end = endedAt.value ?? Date.now()
-  return Math.floor((end - startedAt.value) / 1000)
-})
-
-const flagsPlaced = computed(() => {
-  return board.value.flat().filter((cell) => cell.isFlagged).length
-})
-
-const minesLeft = computed(() => {
-  return Math.max(MINES_COUNT - flagsPlaced.value, 0)
-})
-
-const statusText = computed(() => {
-  if (isWin.value) {
-    return 'Победа! Все мины найдены'
-  }
-  if (gameOver.value) {
-    return 'Бум! Ты наступил на мину'
-  }
-  return 'ЛКМ: открыть, ПКМ: поставить флаг'
-})
-
-function loadRecords(): RecordEntry[] {
-  const raw = localStorage.getItem(RECORDS_STORAGE_KEY)
-  if (!raw) {
-    return []
-  }
-
-  try {
-    const parsed = JSON.parse(raw)
-    if (!Array.isArray(parsed)) {
-      return []
-    }
-
-    return parsed
-      .filter((record) => {
-        return typeof record.seconds === 'number' && typeof record.playedAt === 'string'
-      })
-      .map((record) => ({
-        seconds: record.seconds,
-        playedAt: record.playedAt,
-      }))
-      .slice(0, RECORDS_LIMIT)
-  } catch {
-    return []
-  }
-}
-
-function persistRecords(): void {
-  localStorage.setItem(RECORDS_STORAGE_KEY, JSON.stringify(records.value))
-}
-
-function saveRecord(seconds: number): void {
-  const nextRecords = [
-    ...records.value,
-    {
-      seconds,
-      playedAt: new Date().toISOString(),
-    },
-  ]
-    .sort((a, b) => a.seconds - b.seconds)
-    .slice(0, RECORDS_LIMIT)
-
-  records.value = nextRecords
-  persistRecords()
-}
-
-function clearRecords(): void {
-  records.value = []
-  localStorage.removeItem(RECORDS_STORAGE_KEY)
-}
-
-function formatPlayedAt(dateISO: string): string {
-  return new Date(dateISO).toLocaleString('ru-RU', {
-    day: '2-digit',
-    month: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-function inBounds(row: number, col: number): boolean {
-  return row >= 0 && row < BOARD_SIZE && col >= 0 && col < BOARD_SIZE
-}
-
-function createCell(row: number, col: number): Cell {
-  return {
-    row,
-    col,
-    hasMine: false,
-    isOpen: false,
-    isFlagged: false,
-    adjacentMines: 0,
-  }
-}
-
-function resetGame(): void {
-  const nextBoard = Array.from({ length: BOARD_SIZE }, (_, row) =>
-    Array.from({ length: BOARD_SIZE }, (_, col) => createCell(row, col)),
-  )
-
-  let placed = 0
-  while (placed < MINES_COUNT) {
-    const row = Math.floor(Math.random() * BOARD_SIZE)
-    const col = Math.floor(Math.random() * BOARD_SIZE)
-    const cell = nextBoard[row][col]
-
-    if (!cell.hasMine) {
-      cell.hasMine = true
-      placed += 1
-    }
-  }
-
-  for (let row = 0; row < BOARD_SIZE; row += 1) {
-    for (let col = 0; col < BOARD_SIZE; col += 1) {
-      const cell = nextBoard[row][col]
-      if (cell.hasMine) {
-        continue
+  switch (event.key) {
+    case 'ArrowUp':
+      event.preventDefault()
+      focusedCell.value = focusedCell.value
+        ? { row: Math.max(0, focusedCell.value.row - 1), col: focusedCell.value.col }
+        : { row: 0, col: 0 }
+      break
+    case 'ArrowDown':
+      event.preventDefault()
+      focusedCell.value = focusedCell.value
+        ? { row: Math.min(maxIndex, focusedCell.value.row + 1), col: focusedCell.value.col }
+        : { row: 0, col: 0 }
+      break
+    case 'ArrowLeft':
+      event.preventDefault()
+      focusedCell.value = focusedCell.value
+        ? { row: focusedCell.value.row, col: Math.max(0, focusedCell.value.col - 1) }
+        : { row: 0, col: 0 }
+      break
+    case 'ArrowRight':
+      event.preventDefault()
+      focusedCell.value = focusedCell.value
+        ? { row: focusedCell.value.row, col: Math.min(maxIndex, focusedCell.value.col + 1) }
+        : { row: 0, col: 0 }
+      break
+    case 'Enter':
+    case ' ':
+      event.preventDefault()
+      if (focusedCell.value) {
+        handleCellClick(focusedCell.value.row, focusedCell.value.col)
       }
-
-      let around = 0
-      for (const [dr, dc] of directions) {
-        const nextRow = row + dr
-        const nextCol = col + dc
-        if (inBounds(nextRow, nextCol) && nextBoard[nextRow][nextCol].hasMine) {
-          around += 1
-        }
+      break
+    case 'f':
+    case 'F':
+    case 'ц':
+    case 'Ц':
+      event.preventDefault()
+      if (focusedCell.value) {
+        const fakeEvent = new MouseEvent('contextmenu')
+        handleCellRightClick(fakeEvent, focusedCell.value.row, focusedCell.value.col)
       }
-      cell.adjacentMines = around
-    }
-  }
-
-  board.value = nextBoard
-  gameOver.value = false
-  isWin.value = false
-  startedAt.value = Date.now()
-  endedAt.value = null
-}
-
-function revealAllMines(): void {
-  for (const row of board.value) {
-    for (const cell of row) {
-      if (cell.hasMine) {
-        cell.isOpen = true
-      }
-    }
+      break
+    case 'n':
+    case 'N':
+    case 'т':
+    case 'Т':
+      event.preventDefault()
+      resetGame()
+      break
   }
 }
 
-function openZeroArea(startRow: number, startCol: number): void {
-  const queue: Array<[number, number]> = [[startRow, startCol]]
-
-  while (queue.length > 0) {
-    const next = queue.shift()
-    if (!next) {
-      continue
+// Initialize focused cell when board is ready
+watch(
+  board,
+  (newBoard) => {
+    if (newBoard.length && !focusedCell.value) {
+      focusedCell.value = { row: 0, col: 0 }
     }
-    const [row, col] = next
-    const cell = board.value[row][col]
+  },
+  { immediate: true }
+)
 
-    if (cell.isOpen || cell.isFlagged) {
-      continue
-    }
-
-    cell.isOpen = true
-    if (cell.adjacentMines !== 0) {
-      continue
-    }
-
-    for (const [dr, dc] of directions) {
-      const nextRow = row + dr
-      const nextCol = col + dc
-      if (!inBounds(nextRow, nextCol)) {
-        continue
-      }
-      const nextCell = board.value[nextRow][nextCol]
-      if (!nextCell.isOpen && !nextCell.hasMine) {
-        queue.push([nextRow, nextCol])
-      }
-    }
-  }
+function isFocused(row: number, col: number): boolean {
+  return focusedCell.value?.row === row && focusedCell.value?.col === col
 }
 
-function checkWinCondition(): boolean {
-  for (const row of board.value) {
-    for (const cell of row) {
-      if (!cell.hasMine && !cell.isOpen) {
-        return false
-      }
-    }
-  }
-
-  isWin.value = true
-  endedAt.value = Date.now()
-  saveRecord(elapsedSeconds.value)
-  return true
+function getNumberColorClass(num: number): string {
+  return `num-${num}`
 }
-
-function handleCellClick(row: number, col: number): void {
-  if (gameOver.value || isWin.value) {
-    return
-  }
-
-  const cell = board.value[row][col]
-  if (cell.isFlagged || cell.isOpen) {
-    return
-  }
-
-  if (cell.hasMine) {
-    cell.isOpen = true
-    gameOver.value = true
-    endedAt.value = Date.now()
-    revealAllMines()
-    return
-  }
-
-  if (cell.adjacentMines === 0) {
-    openZeroArea(row, col)
-  } else {
-    cell.isOpen = true
-  }
-
-  checkWinCondition()
-}
-
-function handleCellRightClick(event: MouseEvent, row: number, col: number): void {
-  event.preventDefault()
-
-  if (gameOver.value || isWin.value) {
-    return
-  }
-
-  const cell = board.value[row][col]
-  if (cell.isOpen) {
-    return
-  }
-
-  cell.isFlagged = !cell.isFlagged
-  checkWinCondition()
-}
-
-resetGame()
 </script>
 
 <template>
-  <main class="app">
+  <main class="app" @keydown="handleKeydown" tabindex="0">
     <header class="header">
       <h1>Vue Miner</h1>
       <button class="reset" type="button" @click="resetGame">Новая игра</button>
@@ -295,7 +110,7 @@ resetGame()
 
     <section class="stats">
       <span>Мины: {{ minesLeft }}</span>
-      <span>Флаги: {{ flagsPlaced }}</span>
+      <span>Флаги: {{ flagsCount }}</span>
       <span>Время: {{ elapsedSeconds }}с</span>
     </section>
 
@@ -304,18 +119,27 @@ resetGame()
     <section class="board" role="grid" aria-label="Игровое поле сапера">
       <div v-for="(row, rowIndex) in board" :key="rowIndex" class="row" role="row">
         <button
-          v-for="cell in row"
+          v-for="(cell, colIndex) in row"
           :key="`${cell.row}-${cell.col}`"
           class="cell"
           :class="{
             open: cell.isOpen,
             mine: cell.isOpen && cell.hasMine,
             flagged: cell.isFlagged,
+            focused: isFocused(cell.row, cell.col),
+            ['num-' + cell.adjacentMines]: cell.isOpen && cell.adjacentMines > 0 && !cell.hasMine,
           }"
+          :style="
+            cell.isOpen && cell.adjacentMines > 0 && !cell.hasMine
+              ? { color: getNumberColor(cell.adjacentMines) }
+              : {}
+          "
           type="button"
           role="gridcell"
+          :aria-label="getCellAriaLabel(cell)"
           @click="handleCellClick(cell.row, cell.col)"
           @contextmenu="handleCellRightClick($event, cell.row, cell.col)"
+          @mouseenter="focusedCell = { row: cell.row, col: cell.col }"
         >
           <template v-if="cell.isOpen && cell.hasMine">💣</template>
           <template v-else-if="cell.isFlagged">🚩</template>
@@ -341,6 +165,28 @@ resetGame()
         </li>
       </ol>
     </section>
+
+    <!-- Modal for game over / win -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="gameOver || isWin" class="modal-overlay" @click="resetGame">
+          <div class="modal-content" @click.stop>
+            <div class="modal-icon">
+              {{ isWin ? '🎉' : '💥' }}
+            </div>
+            <h2 class="modal-title">
+              {{ isWin ? 'Победа!' : 'Игра окончена' }}
+            </h2>
+            <p class="modal-message">
+              {{ isWin ? `Вы нашли все мины за ${elapsedSeconds}с!` : 'Вы наступили на мину!' }}
+            </p>
+            <button class="modal-button" type="button" @click="resetGame">
+              Сыграть ещё раз
+            </button>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </main>
 </template>
 
@@ -352,6 +198,7 @@ resetGame()
   align-items: center;
   gap: 12px;
   padding: 24px;
+  outline: none;
 }
 
 .header {
@@ -375,6 +222,16 @@ h1 {
   cursor: pointer;
   background: #2563eb;
   color: #fff;
+  transition: background-color 0.15s ease;
+}
+
+.reset:hover {
+  background: #1d4ed8;
+}
+
+.reset:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
 
 .stats {
@@ -419,6 +276,16 @@ h2 {
   border-radius: 6px;
   padding: 6px 10px;
   cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.records-clear:hover {
+  background: #cbd5e1;
+}
+
+.records-clear:focus-visible {
+  outline: 2px solid #94a3b8;
+  outline-offset: 2px;
 }
 
 .records-empty {
@@ -458,14 +325,34 @@ h2 {
   width: 34px;
   height: 34px;
   border: 1px solid #94a3b8;
-  background: #e2e8f0;
+  background: linear-gradient(145deg, #e2e8f0, #cbd5e1);
   border-radius: 4px;
   cursor: pointer;
   font-weight: 700;
+  font-size: 14px;
+  transition: all 0.1s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cell:hover:not(.open) {
+  background: linear-gradient(145deg, #cbd5e1, #94a3b8);
+}
+
+.cell:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.cell.focused {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
 }
 
 .cell.open {
   background: #f8fafc;
+  cursor: default;
 }
 
 .cell.mine {
@@ -474,5 +361,97 @@ h2 {
 
 .cell.flagged {
   background: #fef3c7;
+}
+
+/* Number colors */
+.num-1 { color: #3b82f6; }
+.num-2 { color: #22c55e; }
+.num-3 { color: #ef4444; }
+.num-4 { color: #8b5cf6; }
+.num-5 { color: #f59e0b; }
+.num-6 { color: #06b6d4; }
+.num-7 { color: #1e293b; }
+.num-8 { color: #64748b; }
+
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  cursor: pointer;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  text-align: center;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  cursor: default;
+  max-width: 90%;
+  width: 320px;
+}
+
+.modal-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.modal-title {
+  margin: 0 0 8px;
+  font-size: 24px;
+  color: #0f172a;
+}
+
+.modal-message {
+  margin: 0 0 24px;
+  font-size: 16px;
+  color: #475569;
+}
+
+.modal-button {
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  background: #2563eb;
+  color: #fff;
+  transition: background-color 0.15s ease;
+}
+
+.modal-button:hover {
+  background: #1d4ed8;
+}
+
+.modal-button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* Modal transitions */
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+
+.modal-enter-active .modal-content,
+.modal-leave-active .modal-content {
+  transition: transform 0.2s ease;
+}
+
+.modal-enter-from .modal-content,
+.modal-leave-to .modal-content {
+  transform: scale(0.9);
 }
 </style>
