@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import { useMinesweeper } from './composables/useMinesweeper'
-import { NUMBER_COLORS } from './config'
+import { ref, watch } from 'vue';
+import { useMinesweeper } from './composables/useMinesweeper';
+import { NUMBER_COLORS } from './config';
 
 const {
   gameOver,
@@ -19,65 +19,65 @@ const {
   formatPlayedAt,
   getCellAriaLabel,
   getNumberColor,
-} = useMinesweeper()
+} = useMinesweeper();
 
 // Keyboard navigation
-const focusedCell = ref<{ row: number; col: number } | null>(null)
+const focusedCell = ref<{ row: number; col: number } | null>(null);
 
 function handleKeydown(event: KeyboardEvent): void {
-  if (!board.value.length) return
+  if (!board.value.length) return;
 
-  const maxIndex = board.value.length - 1
+  const maxIndex = board.value.length - 1;
 
   switch (event.key) {
     case 'ArrowUp':
-      event.preventDefault()
+      event.preventDefault();
       focusedCell.value = focusedCell.value
         ? { row: Math.max(0, focusedCell.value.row - 1), col: focusedCell.value.col }
-        : { row: 0, col: 0 }
-      break
+        : { row: 0, col: 0 };
+      break;
     case 'ArrowDown':
-      event.preventDefault()
+      event.preventDefault();
       focusedCell.value = focusedCell.value
         ? { row: Math.min(maxIndex, focusedCell.value.row + 1), col: focusedCell.value.col }
-        : { row: 0, col: 0 }
-      break
+        : { row: 0, col: 0 };
+      break;
     case 'ArrowLeft':
-      event.preventDefault()
+      event.preventDefault();
       focusedCell.value = focusedCell.value
         ? { row: focusedCell.value.row, col: Math.max(0, focusedCell.value.col - 1) }
-        : { row: 0, col: 0 }
-      break
+        : { row: 0, col: 0 };
+      break;
     case 'ArrowRight':
-      event.preventDefault()
+      event.preventDefault();
       focusedCell.value = focusedCell.value
         ? { row: focusedCell.value.row, col: Math.min(maxIndex, focusedCell.value.col + 1) }
-        : { row: 0, col: 0 }
-      break
+        : { row: 0, col: 0 };
+      break;
     case 'Enter':
     case ' ':
-      event.preventDefault()
+      event.preventDefault();
       if (focusedCell.value) {
-        handleCellClick(focusedCell.value.row, focusedCell.value.col)
+        handleCellClick(focusedCell.value.row, focusedCell.value.col);
       }
-      break
+      break;
     case 'f':
     case 'F':
     case 'ц':
     case 'Ц':
-      event.preventDefault()
+      event.preventDefault();
       if (focusedCell.value) {
-        const fakeEvent = new MouseEvent('contextmenu')
-        handleCellRightClick(fakeEvent, focusedCell.value.row, focusedCell.value.col)
+        const fakeEvent = new MouseEvent('contextmenu');
+        handleCellRightClick(fakeEvent, focusedCell.value.row, focusedCell.value.col);
       }
-      break
+      break;
     case 'n':
     case 'N':
     case 'т':
     case 'Т':
-      event.preventDefault()
-      resetGame()
-      break
+      event.preventDefault();
+      resetGame();
+      break;
   }
 }
 
@@ -86,18 +86,18 @@ watch(
   board,
   (newBoard) => {
     if (newBoard.length && !focusedCell.value) {
-      focusedCell.value = { row: 0, col: 0 }
+      focusedCell.value = { row: 0, col: 0 };
     }
   },
   { immediate: true }
-)
+);
 
 function isFocused(row: number, col: number): boolean {
-  return focusedCell.value?.row === row && focusedCell.value?.col === col
+  return focusedCell.value?.row === row && focusedCell.value?.col === col;
 }
 
 function getNumberColorClass(num: number): string {
-  return `num-${num}`
+  return `num-${num}`;
 }
 </script>
 

@@ -3,7 +3,7 @@ export const GAME_CONFIG = {
   MINES_COUNT: 15,
   RECORDS_LIMIT: 10,
   RECORDS_STORAGE_KEY: 'vue-miner-records',
-} as const
+} as const;
 
 export const NUMBER_COLORS: Record<number, string> = {
   1: '#3b82f6',
@@ -14,4 +14,4 @@ export const NUMBER_COLORS: Record<number, string> = {
   6: '#06b6d4',
   7: '#1e293b',
   8: '#64748b',
-} as const
+} as const;
